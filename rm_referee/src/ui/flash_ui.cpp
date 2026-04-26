@@ -3,6 +3,8 @@
 //
 
 #include "rm_referee/ui/flash_ui.h"
+#include "rm_msgs/GameStatus.h"
+#include "ros/time.h"
 
 namespace rm_referee
 {
@@ -229,5 +231,84 @@ void BurstFlashUi::updateBurstTimeData(const rm_msgs::ManualToReferee::ConstPtr&
   start_burst_time_ = data->start_burst_time;
   display(ros::Time::now());
 }
+
+void RuneRemindFlashUi::display(const ros::Time& time)
+{
+  static constexpr std::array<int, 4> kActivationRemainSec{ 330, 240, 165, 90 };
+  static constexpr int kLeadTimeSec = 20;
+  static constexpr double kShowDurationSec = 4;
+
+  int active_window_index = -1;
+  if (stage_remain_time_ >= 0)
+  {
+    for (size_t i = 0; i < kActivationRemainSec.size(); ++i)
+    {
+      const int upper = kActivationRemainSec[i] + kLeadTimeSec;
+      const int lower = kActivationRemainSec[i];
+      if (stage_remain_time_ <= upper && stage_remain_time_ > lower)
+      {
+        active_window_index = static_cast<int>(i);
+        break;
+      }
+    }
+
+    if (active_window_index >= 0)
+    {
+      const size_t index = static_cast<size_t>(active_window_index);
+      if (!trigger_once_[index])
+      {
+        trigger_once_[index] = true;
+        is_showing_ = true;
+        show_start_time_ = time;
+        ROS_INFO("[rm_referee]: Rune remind triggered. window=%zu, stage_remain_time=%d", index, stage_remain_time_);
+      }
+    }
+  }
+
+  if (is_showing_)
+  {
+    const double show_elapsed = (time - show_start_time_).toSec();
+    if (show_elapsed <= kShowDurationSec)
+    {
+      ROS_INFO_THROTTLE(0.5, "[rm_referee]: Rune remind showing... elapsed=%.2f/%.2f, stage_remain_time=%d",
+                        show_elapsed, kShowDurationSec, stage_remain_time_);
+      FlashUi::updateFlashUiForQueue(time, true, false);
+      return;
+    }
+    is_showing_ = false;
+    ROS_INFO("[rm_referee]: Rune remind hidden after %.2f s", show_elapsed);
+    FlashUi::updateFlashUiForQueue(time, false, true);
+    return;
+  }
+
+  ROS_DEBUG_THROTTLE(2.0, "[rm_referee]: Rune remind idle, stage_remain_time=%d", stage_remain_time_);
+  FlashUi::updateFlashUiForQueue(time, false, true);
+}
+
+void RuneRemindFlashUi::updateGameTime(const rm_msgs::GameStatus& msg, const ros::Time& time)
+{
+  if (stage_remain_time_ >= 0 && static_cast<int>(msg.stage_remain_time) > stage_remain_time_ + 2)
+  {
+    ROS_INFO("[rm_referee]: Rune remind round reset detected. old=%d, new=%d", stage_remain_time_,
+             static_cast<int>(msg.stage_remain_time));
+    resetRoundState();
+  }
+
+  stage_remain_time_ = static_cast<int>(msg.stage_remain_time);
+  display(time);
+}
+
+void RuneRemindFlashUi::updateEventData(const rm_msgs::EventData& msg, const ros::Time& time)
+{
+  (void)msg;
+  (void)time;
+}
+
+void RuneRemindFlashUi::resetRoundState()
+{
+  trigger_once_ = { false, false, false, false };
+  is_showing_ = false;
+}
+
 }  // namespace rm_referee
 // namespace rm_referee

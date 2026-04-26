@@ -42,7 +42,6 @@
 
 #include <ros/ros.h>
 #include <rm_msgs/ChassisCmd.h>
-#include <rm_msgs/ChassisActiveSusCmd.h>
 #include <rm_msgs/GimbalCmd.h>
 #include <rm_msgs/ShootCmd.h>
 #include <rm_msgs/ShootBeforehandCmd.h>
@@ -62,7 +61,6 @@
 #include <std_msgs/String.h>
 #include <std_msgs/Bool.h>
 #include <control_msgs/JointControllerState.h>
-#include <std_msgs/Float32.h>
 
 #include "rm_common/ros_utilities.h"
 #include "rm_common/decision/heat_limit.h"
@@ -72,21 +70,6 @@
 
 namespace rm_common
 {
-namespace detail
-{
-template <typename TMsg>
-auto setTrajFrameIdIfSupported(TMsg& msg, const std::string& traj_frame_id, int)
-    -> decltype((void)(msg.traj_frame_id = traj_frame_id), void())
-{
-  msg.traj_frame_id = traj_frame_id;
-}
-
-template <typename TMsg>
-void setTrajFrameIdIfSupported(TMsg&, const std::string&, long)
-{
-}
-}  // namespace detail
-
 template <class MsgType>
 class CommandSenderBase
 {
@@ -248,10 +231,6 @@ public:
   {
     XmlRpc::XmlRpcValue xml_rpc_value;
     power_limit_ = new PowerLimit(nh);
-    if (!nh.getParam("follow_source_frame", follow_source_frame_))
-      ROS_ERROR("follow_source_frame no defined (namespace: %s)", nh.getNamespace().c_str());
-    else
-      msg_.follow_source_frame = follow_source_frame_;
     if (!nh.getParam("accel_x", xml_rpc_value))
       ROS_ERROR("Accel X no defined (namespace: %s)", nh.getNamespace().c_str());
     else
@@ -290,11 +269,6 @@ public:
   {
     msg_.follow_vel_des = follow_vel_des;
   }
-  void setFollowSourceFrame(std::string follow_source_frame)
-  {
-    follow_source_frame_ = std::move(follow_source_frame);
-    msg_.follow_source_frame = follow_source_frame_;
-  }
   void setWirelessState(bool state)
   {
     msg_.wireless_state = state;
@@ -312,21 +286,8 @@ public:
 
 private:
   LinearInterp accel_x_, accel_y_, accel_z_;
-  std::string follow_source_frame_;
 };
 
-class ChassisActiveSuspensionCommandSender : public TimeStampCommandSenderBase<rm_msgs::ChassisActiveSusCmd>
-{
-public:
-  explicit ChassisActiveSuspensionCommandSender(ros::NodeHandle& nh)
-    : TimeStampCommandSenderBase<rm_msgs::ChassisActiveSusCmd>(nh)
-  {
-  }
-  void setZero() override
-  {
-    msg_.mode = 0;
-  }
-};
 class GimbalCommandSender : public TimeStampCommandSenderBase<rm_msgs::GimbalCmd>
 {
 public:
@@ -371,9 +332,9 @@ public:
     msg_.traj_yaw = traj_yaw;
     msg_.traj_pitch = traj_pitch;
   }
-  void setTrajFrameId(const std::string& traj_frame_id)
+  void setGimbalTrajFrameId(const std::string& traj_frame_id)
   {
-    detail::setTrajFrameIdIfSupported(msg_, traj_frame_id, 0);
+    msg_.traj_frame_id = traj_frame_id;
   }
   void setZero() override
   {
@@ -425,8 +386,7 @@ public:
     nh.getParam("wheel_speed_18", wheel_speed_18_);
     nh.getParam("wheel_speed_30", wheel_speed_30_);
     nh.param("wheel_speed_offset_front", wheel_speed_offset_front_, 0.0);
-    nh.param("wheel_speed_offset_normal", wheel_speed_offset_normal_, 0.0);
-    nh.param("wheel_speed_offset_deploy", wheel_speed_offset_deploy_, 0.0);
+    nh.param("wheel_speed_offset_back", wheel_speed_offset_back_, 0.0);
     nh.param("speed_oscillation", speed_oscillation_, 1.0);
     nh.param("extra_wheel_speed_once", extra_wheel_speed_once_, 0.);
     nh.param("deploy_wheel_speed", deploy_wheel_speed_, 410.0);
@@ -525,9 +485,7 @@ public:
          (track_data_.accel > target_acceleration_tolerance_)) ||
         (!suggest_fire_.data && armor_type_ == rm_msgs::StatusChangeRequest::ARMOR_OUTPOST_BASE))
       if (msg_.mode == rm_msgs::ShootCmd::PUSH)
-      {
         setMode(rm_msgs::ShootCmd::READY);
-      }
   }
   void sendCommand(const ros::Time& time) override
   {
@@ -613,10 +571,7 @@ public:
   }
   double getBackWheelSpeedOffset()
   {
-    if (deploy_flag_)
-      wheels_speed_offset_back_ = wheel_speed_offset_deploy_;
-    else
-      wheels_speed_offset_back_ = wheel_speed_offset_normal_;
+    wheels_speed_offset_back_ = wheel_speed_offset_back_;
     return wheels_speed_offset_back_;
   }
   void dropSpeed()
@@ -648,17 +603,11 @@ public:
   void setZero() override{};
   HeatLimit* heat_limit_{};
 
-  int getShootMode()
-  {
-    return msg_.mode;
-  }
-
 private:
   double speed_10_{}, speed_15_{}, speed_16_{}, speed_18_{}, speed_30_{}, speed_des_{}, speed_limit_{};
   double wheel_speed_10_{}, wheel_speed_15_{}, wheel_speed_16_{}, wheel_speed_18_{}, wheel_speed_30_{},
       wheel_speed_des_{}, last_bullet_speed_{}, speed_oscillation_{};
-  double wheel_speed_offset_normal_{}, wheel_speed_offset_deploy_{};
-  double wheel_speed_offset_front_{};
+  double wheel_speed_offset_front_{}, wheel_speed_offset_back_{};
   double wheels_speed_offset_front_{}, wheels_speed_offset_back_{};
   double track_armor_error_tolerance_{};
   double track_buff_error_tolerance_{};
@@ -679,18 +628,18 @@ private:
   uint8_t armor_type_{};
 };
 
-class BallisticSolverRequestCommandSender : public CommandSenderBase<std_msgs::Bool>
+class UseLioCommandSender : public CommandSenderBase<std_msgs::Bool>
 {
 public:
-  explicit BallisticSolverRequestCommandSender(ros::NodeHandle& nh) : CommandSenderBase<std_msgs::Bool>(nh)
+  explicit UseLioCommandSender(ros::NodeHandle& nh) : CommandSenderBase<std_msgs::Bool>(nh)
   {
   }
 
-  void setBallisticSolverRequest(bool flag)
+  void setUseLio(bool flag)
   {
     msg_.data = flag;
   }
-  bool getBallisticSolverRequest() const
+  bool getUseLio() const
   {
     return msg_.data;
   }

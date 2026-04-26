@@ -137,6 +137,7 @@ public:
   ExceedBulletSpeedFlashUi* exceed_bullet_speed_flash_ui_{};
   CustomizeDisplayFlashUi* customize_display_flash_ui_{};
   BurstFlashUi* burst_flash_ui_{};
+  RuneRemindFlashUi* rune_remind_flash_ui_{};
 
   InteractiveSender* interactive_data_sender_{};
   CustomInfoSender* custom_info_sender{};

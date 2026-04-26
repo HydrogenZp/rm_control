@@ -4,7 +4,12 @@
 
 #pragma once
 
+#include <array>
+#include "XmlRpcValue.h"
+#include "rm_msgs/EventData.h"
+#include "rm_msgs/GameStatus.h"
 #include "rm_referee/ui/ui_base.h"
+#include "ros/time.h"
 
 namespace rm_referee
 {
@@ -169,5 +174,27 @@ public:
 private:
   void display(const ros::Time& time) override;
   ros::Time start_burst_time_;
+};
+
+class RuneRemindFlashUi : public FlashUi
+{
+public:
+  explicit RuneRemindFlashUi(XmlRpc::XmlRpcValue& rpc_value, Base& base, std::deque<Graph>* graph_queue,
+                             std::deque<Graph>* character_queue)
+    : FlashUi(rpc_value, base, "rune_remind", graph_queue, character_queue)
+  {
+  }
+  void updateGameTime(const rm_msgs::GameStatus& msg, const ros::Time& time);
+  void updateEventData(const rm_msgs::EventData& msg, const ros::Time& time);
+
+private:
+  void display(const ros::Time& time) override;
+  void resetRoundState();
+
+  std::array<bool, 4> trigger_once_{ { false, false, false, false } };
+  bool is_showing_{ false };
+  ros::Time show_start_time_;
+  int stage_remain_time_{ -1 };
+
 };
 }  // namespace rm_referee

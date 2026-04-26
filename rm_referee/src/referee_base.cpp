@@ -165,6 +165,9 @@ RefereeBase::RefereeBase(ros::NodeHandle& nh, Base& base) : base_(base), nh_(nh)
       if (rpc_value[i]["name"] == "customize_display")
         customize_display_flash_ui_ =
             new CustomizeDisplayFlashUi(rpc_value[i], base_, &graph_queue_, &character_queue_);
+      if (rpc_value[i]["name"] == "rune_remind")
+        rune_remind_flash_ui_ =
+            new RuneRemindFlashUi(rpc_value[i], base_, &graph_queue_, &character_queue_);
       // if (rpc_value[i]["name"] == "burst")
       //   burst_flash_ui_ = new BurstFlashUi(rpc_value[i], base_, &graph_queue_, &character_queue_);
     }
@@ -372,6 +375,8 @@ void RefereeBase::updateGameRobotHpDataCallBack(const rm_msgs::GameRobotHp& game
 }
 void RefereeBase::gameStatusDataCallBack(const rm_msgs::GameStatus& data, const ros::Time& last_get_data_time)
 {
+  if (rune_remind_flash_ui_ && !is_adding_)
+    rune_remind_flash_ui_->updateGameTime(data, last_get_data_time);
 }
 void RefereeBase::capacityDataCallBack(const rm_msgs::PowerManagementSampleAndStatusData& data,
                                        ros::Time& last_get_data_time)
@@ -400,6 +405,8 @@ void RefereeBase::interactiveDataCallBack(const rm_referee::InteractiveData& dat
 }
 void RefereeBase::eventDataCallBack(const rm_msgs::EventData& data, const ros::Time& last_get_data_time)
 {
+  if (rune_remind_flash_ui_ && !is_adding_)
+    rune_remind_flash_ui_->updateEventData(data, last_get_data_time);
 }
 void RefereeBase::jointStateCallback(const sensor_msgs::JointState::ConstPtr& data)
 {

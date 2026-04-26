@@ -158,6 +158,7 @@ int Referee::unpack(uint8_t* rx_data)
           event_data.stamp = last_get_data_time_;
 
           event_data_pub_.publish(event_data);
+          referee_ui_.eventDataCallBack(event_data, last_get_data_time_);
           break;
         }
         case rm_referee::RefereeCmdId::SUPPLY_PROJECTILE_ACTION_CMD:
