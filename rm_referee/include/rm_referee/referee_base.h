@@ -13,6 +13,7 @@
 #include "rm_referee/ui/time_change_ui.h"
 #include "rm_referee/ui/flash_ui.h"
 #include "rm_referee/ui/interactive_data.h"
+#include "rm_referee/ui/target_projection_ui.h"
 
 namespace rm_referee
 {
@@ -120,6 +121,7 @@ public:
   JointPositionTimeChangeUi *engineer_joint1_time_change_ui{}, *engineer_joint2_time_change_ui{},
       *engineer_joint3_time_change_ui{};
   TargetDistanceTimeChangeUi* target_distance_time_change_ui_{};
+  TargetProjectionUi* target_projection_ui_{};
   FriendBulletsTimeChangeGroupUi* friend_bullets_time_change_group_ui_{};
   TargetHpTimeChangeUi* target_hp_time_change_ui_{};
 

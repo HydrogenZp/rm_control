@@ -135,6 +135,8 @@ RefereeBase::RefereeBase(ros::NodeHandle& nh, Base& base) : base_(base), nh_(nh)
       if (rpc_value[i]["name"] == "target_distance")
         target_distance_time_change_ui_ =
             new TargetDistanceTimeChangeUi(rpc_value[i], base_, &graph_queue_, &character_queue_);
+      if (rpc_value[i]["name"] == "target_projection")
+        target_projection_ui_ = new TargetProjectionUi(rpc_value[i], base_, &graph_queue_, &character_queue_);
       if (rpc_value[i]["name"] == "drone_towards")
         drone_towards_time_change_group_ui_ =
             new DroneTowardsTimeChangeGroupUi(rpc_value[i], base_, &graph_queue_, &character_queue_);
@@ -265,6 +267,8 @@ void RefereeBase::addUi()
   }
   if (target_distance_time_change_ui_)
     target_distance_time_change_ui_->addForQueue();
+  if (target_projection_ui_)
+    target_projection_ui_->addForQueue();
   if (friend_bullets_time_change_group_ui_)
     friend_bullets_time_change_group_ui_->addForQueue();
   // if (target_hp_time_change_ui_)
@@ -521,6 +525,8 @@ void RefereeBase::trackCallBack(const rm_msgs::TrackDataConstPtr& data)
     target_view_angle_trigger_change_ui_->updateTrackID(data->id);
   if (target_distance_time_change_ui_ && !is_adding_)
     target_distance_time_change_ui_->updateTargetDistanceData(data);
+  if (target_projection_ui_ && !is_adding_)
+    target_projection_ui_->updateTrackData(data);
   // if (target_hp_time_change_ui_ && !is_adding_)
   //   target_hp_time_change_ui_->updateTrackID(data->id);
 }
