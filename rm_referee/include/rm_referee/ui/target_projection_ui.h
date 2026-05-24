@@ -32,6 +32,7 @@ public:
   }
 
   void updateTrackData(const rm_msgs::TrackData::ConstPtr& data);
+  void addForQueue(int add_times = 1) override;
 
 private:
   void updateConfig() override;

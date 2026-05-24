@@ -47,6 +47,12 @@ void TargetProjectionUi::updateTrackData(const rm_msgs::TrackData::ConstPtr& dat
   updateForQueue();
 }
 
+void TargetProjectionUi::addForQueue(int add_times)
+{
+  updateConfig();
+  UiBase::addForQueue(add_times);
+}
+
 void TargetProjectionUi::updateConfig()
 {
   if (tracking_)
@@ -57,9 +63,7 @@ void TargetProjectionUi::updateConfig()
   }
   else
   {
-    graph_->setStartX(-1);
-    graph_->setStartY(-1);
-    graph_->setRadius(0);
+    graph_->setOperation(rm_referee::GraphOperation::DELETE);
   }
 }
 
