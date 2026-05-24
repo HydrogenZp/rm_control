@@ -63,7 +63,9 @@ void TargetProjectionUi::updateConfig()
   }
   else
   {
-    graph_->setOperation(rm_referee::GraphOperation::DELETE);
+    graph_->setStartX(-1);
+    graph_->setStartY(-1);
+    graph_->setRadius(0);
   }
 }
 
